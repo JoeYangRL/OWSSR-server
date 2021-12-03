@@ -7,6 +7,7 @@ from randaugment import RandAugmentMC
 from PIL import Image
 import logging
 import cv2
+from utils import load_image
 
 """
 # used args paramters
@@ -28,7 +29,7 @@ imagenet_cls_num = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
                     800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 
                     811, 812, 813, 814, 815, 816] # 50 classes in total, imagenet id start from 0
 
-task_list = [68, 56, 78, 8, 23, 84, 90, 65, 74, 76,
+"""task_list = [68, 56, 78, 8, 23, 84, 90, 65, 74, 76,
                  40, 89, 3, 92, 55, 9, 26, 80, 43, 38,
                  58, 70, 77, 1, 85, 19, 17, 50, 28, 53,
                  13, 81, 45, 82, 6, 59, 83, 16, 15, 44,
@@ -37,7 +38,31 @@ task_list = [68, 56, 78, 8, 23, 84, 90, 65, 74, 76,
                  42, 22, 35, 86, 24, 34, 87, 21, 99, 0,
                  88, 27, 18, 94, 11, 12, 47, 25, 30, 46,
                  62, 69, 36, 61, 7, 63, 75, 5, 32, 4,
-                 51, 48, 73, 93, 39, 67, 29, 49, 57, 33, 100]
+                 51, 48, 73, 93, 39, 67, 29, 49, 57, 33, 100]"""
+
+#task_list = [i for i in range(101)]
+
+task_list = [4, 30, 55, 72, 95,
+                 1, 32, 67, 73, 91,
+                 54, 62, 70, 82, 92, 
+                 9, 10, 16, 28, 61, 
+                 0, 51, 53, 57, 83, 
+                 22, 39, 40, 86, 87, 
+                 5, 20, 25, 84, 94, 
+                 6, 7, 14, 18, 24, 
+                 3, 42, 43, 88, 97, 
+                 12, 17, 37, 68, 76, 
+                 23, 33, 49, 60, 71, 
+                 15, 19, 21, 31, 38, 
+                 34, 63, 64, 66, 75, 
+                 26, 45, 77, 79, 99, 
+                 2, 11, 35, 46, 98, 
+                 27, 29, 44, 78, 93, 
+                 36, 50, 65, 74, 80, 
+                 47, 52, 56, 59, 96, 
+                 8, 13, 48, 58, 90, 
+                 41, 69, 81, 85, 89,
+                 100] #cls order in superclass order
 
 class CIFAR100_txt():
     def __init__(self, root):
@@ -115,9 +140,10 @@ def x_u_split(args, labels, current_cls, future_cls, old_cls=[]):
     labels = np.array(labels)
     if old_cls != []:
         mem_per_cls = args.memory_size // len(old_cls) # sample per old cls
-        fut_num = (args.unlabeled_mu * args.num_labeled * len(current_cls) - args.memory_size) # total size for unknown cls
+        fut_num = (args.unlabeled_mu * args.num_labeled * len(current_cls) - args.memory_size - (500 - args.num_labeled) * len(current_cls)) # total size for unknown cls
     else:
-        fut_num = args.unlabeled_mu * args.num_labeled * len(current_cls)
+        fut_num = args.unlabeled_mu * args.num_labeled * len(current_cls)  - (500 - args.num_labeled) * len(current_cls)
+    fut_per_cls = int(fut_num // len(future_cls))
     labeled_idx = []
     unlabeled_idx = []
 
@@ -141,12 +167,10 @@ def x_u_split(args, labels, current_cls, future_cls, old_cls=[]):
     
     ##############################################################################
     # sample future cls
-    all_future_idx = []
     for i in future_cls:
         idx = np.where(labels == i)[0]
-        all_future_idx.extend(idx)
-    u_idx = np.random.choice(all_future_idx, fut_num, False)
-    unlabeled_idx.extend(u_idx)
+        u_idx = np.random.choice(idx, fut_per_cls, False)
+        unlabeled_idx.extend(u_idx)
 
     ##############################################################################
     # expand labeled dataset for efficiency
@@ -156,9 +180,9 @@ def x_u_split(args, labels, current_cls, future_cls, old_cls=[]):
     if args.expand_labels:
         num_expand_x = args.num_expand_x #expand dataset to reduce times of dataloading
         labeled_idx = np.hstack([labeled_idx for _ in range(num_expand_x)])
-        unlabeled_idx = np.hstack([unlabeled_idx for _ in range(num_expand_x)])
+        #unlabeled_idx = np.hstack([unlabeled_idx for _ in range(num_expand_x)])
     np.random.shuffle(labeled_idx)
-    np.random.shuffle(unlabeled_idx)
+    #np.random.shuffle(unlabeled_idx)
 
     return labeled_idx, unlabeled_idx
 
@@ -210,18 +234,19 @@ class MyDataset_labeled(Dataset):
                 """img = Image.open(sep[0])
                 if img.mode != 'RGB':
                     img = img.convert('RGB')"""
-                img = cv2.imread(sep[0])
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                self.data.append(img)
+                """img = cv2.imread(sep[0])
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)"""
+                self.data.append(sep[0])
                 self.label.append(int(task_list.index(int(sep[1])))) # origin label --> shuffled label
         
         f.close()
     
     def __getitem__(self, index):
 
-        img, label = self.data[index], self.label[index]
-        #img = self.transform(img)
-        img = self.transform(Image.fromarray(img))
+        path, label = self.data[index], self.label[index]
+        img = load_image(path)
+        img = self.transform(img)
+        #img = self.transform(Image.fromarray(img))
 
         return img, label
     
@@ -252,9 +277,9 @@ class MyDataset_unlabeled(Dataset):
                 """img = Image.open(sep[0])
                 if img.mode != 'RGB':
                     img = img.convert('RGB')"""
-                img = cv2.imread(sep[0])
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                self.data_all.append(img)
+                """img = cv2.imread(sep[0])
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)"""
+                self.data_all.append(sep[0])
                 self.label_all.append(int(task_list.index(int(sep[1])))) # origin label --> shuffled label
         #self.init_index()
         f.close()
@@ -273,9 +298,10 @@ class MyDataset_unlabeled(Dataset):
 
     def __getitem__(self, index):
 
-        img, label = self.data_select[index], self.label_select[index]
-        #img = self.transform(img)
-        img = self.transform(Image.fromarray(img))
+        path, label = self.data_select[index], self.label_select[index]
+        img = load_image(path)
+        img = self.transform(img)
+        #img = self.transform(Image.fromarray(img))
 
         return img, label
     
@@ -308,9 +334,9 @@ class Mydataset_test(Dataset):
                     """img = Image.open(sep[0])
                     if img.mode != 'RGB':
                         img = img.convert('RGB')"""
-                    img = cv2.imread(sep[0])
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    self.data.append(img)
+                    """img = cv2.imread(sep[0])
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)"""
+                    self.data.append(sep[0])
                     self.label.append(int(task_list.index(int(sep[1])))) # origin label --> shuffled label
             f_test.close()
         else:
@@ -325,18 +351,19 @@ class Mydataset_test(Dataset):
                     """img = Image.open(sep[0])
                     if img.mode != 'RGB':
                         img = img.convert('RGB')"""
-                    img = cv2.imread(sep[0])
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    self.data.append(img)
+                    """img = cv2.imread(sep[0])
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)"""
+                    self.data.append(sep[0])
                     self.label.append(int(task_list.index(int(sep[1])))) # origin label --> shuffled label
         
             f_val.close()
 
     def __getitem__(self, index):
 
-        img, label = self.data[index], self.label[index]
-        #img = self.transform(img)
-        img = self.transform(Image.fromarray(img))
+        path, label = self.data[index], self.label[index]
+        img = load_image(path)
+        img = self.transform(img)
+        #img = self.transform(Image.fromarray(img))
 
         return img, label
     
@@ -347,16 +374,16 @@ class Mydataset_test(Dataset):
 class TransformFixMatch(object):
     def __init__(self, mean, std, norm=True, size_image=32):
         self.weak = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
                                   padding_mode='reflect')])
         self.weak2 = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.RandomHorizontalFlip(),])
         self.strong = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
@@ -368,23 +395,24 @@ class TransformFixMatch(object):
         self.norm = norm
 
     def __call__(self, x):
+        weaker = self.weak2(x)
         weak = self.weak(x)
         strong = self.strong(x)
         if self.norm:
-            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak(x))
+            return self.normalize(weaker), self.normalize(weak), self.normalize(strong)
         else:
             return weak, strong
 
 class TransformOpenMatch(object):
     def __init__(self, mean, std, norm=True, size_image=32):
         self.weak = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=size_image,
                                   padding=int(size_image*0.125),
                                   padding_mode='reflect')])
         self.weak2 = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.RandomHorizontalFlip(),])
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
@@ -396,6 +424,6 @@ class TransformOpenMatch(object):
         strong = self.weak(x)
 
         if self.norm:
-            return self.normalize(weak), self.normalize(self.weak(x)), self.normalize(strong)
+            return self.normalize(weak), self.normalize(strong), self.normalize(self.weak2(x))
         else:
             return weak, strong

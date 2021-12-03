@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -7,6 +8,8 @@ from torch.nn.modules import loss
 # used args paramters
 args.T [check]
 """
+
+logger = logging.getLogger(__name__)
 
 def ova_loss(logits_open, label):
     logits_open = logits_open.view(logits_open.size(0), 2, -1)
@@ -34,11 +37,13 @@ def dist_loss(args, logits_m, logits_open_m, logits_old, logits_open_old):
 
     # 1. closed head
     loss1 = nn.KLDivLoss()(F.log_softmax(logits_m/args.T), F.softmax(logits_old/args.T)) * args.T * args.T
+    #logger.info(f"loss1: {loss1.data}")
     # 2. open head
     logits_open_m = logits_open_m.view(logits_open_m.size(0), 2, -1)
     logits_open_old = logits_open_old.view(logits_open_old.size(0), 2, -1)
-    loss2 = nn.KLDivLoss()(F.log_softmax(logits_open_m/args.T), F.softmax(logits_open_old/args.T)) * args.T * args.T
+    loss2 = nn.KLDivLoss()(F.log_softmax(logits_open_m/args.T,1), F.softmax(logits_open_old/args.T,1)) * args.T * args.T
+    #logger.info(f"loss2: {loss2.data}")
 
-    return loss1+loss2
-    
+    return 5.7* (loss1+loss2)
 
+#def old_cls_loss(args, logits_m, logits_old):

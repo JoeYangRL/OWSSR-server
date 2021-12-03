@@ -75,7 +75,7 @@ def set_parser():
                         help='expand labeled dataset for how many times')
     parser.add_argument('--memory_size', default=2000, type=int,
                         help='memory_size')
-    parser.add_argument('--unlabeled_mu', default=20, type=int,
+    parser.add_argument('--unlabeled_mu', default=20, type=float,
                         help='ratio unlabeled data/labeled data')
     parser.add_argument('--imagenet_valid_size', default=1000, type=int,
                         help='imagenet_valid_size')
@@ -85,6 +85,10 @@ def set_parser():
                         help='iters per epoch')
     parser.add_argument('--threshold', default=0.95, type=float,
                         help='threshold to choose confident samples in FixMatch')
+    parser.add_argument('--use-ema', action='store_true', default=False,
+                        help='use EMA model')
+    parser.add_argument('--ema-decay', default=0.999, type=float,
+                        help='EMA decay rate')
     
     args = parser.parse_args()
     return args

@@ -39,17 +39,17 @@ def test(args, test_loader, model, val=False):
             #logger.info(f"out_open: {out_open.shape}")
             tmp_range = torch.range(0, out_open.size(0) - 1).long().cuda() # [bsz]
             #logger.info(f"tmp_range: {tmp_range.shape}")
-            pred_close = outputs.data.max(1)[1] # [bsz]
+            pred_close = outputs.data.max(1)[1] # [bsz] cls_idx with max softmax value
             #logger.info(f"pred_close: {pred_close.shape}")
             unk_score = out_open[tmp_range, 0, pred_close] # [bsz]
             #logger.info(f"unk_score: {unk_score.shape}")
-            known_score = outputs.max(1)[0] # [bsz]
+            known_score = outputs.max(1)[0] # [bsz] max softmax score
             #logger.info(f"known_score: {known_score.shape}")
-            targets_unk = targets >= int(outputs.size(1)) # [bsz]
+            targets_unk = targets >= int(outputs.size(1)) # [bsz] True/False value (True for unk)
             #logger.info(f"targets_unk: {targets_unk.shape}")
             targets[targets_unk] = int(outputs.size(1)) # targets[targets_unk] = num_known_cls
             #logger.info(f"targets[targets_unk] = {int(outputs.size(1))}")
-            known_targets = targets < int(outputs.size(1)) # [bsz]
+            known_targets = targets < int(outputs.size(1)) # [bsz] True/False value (True for known)
             #logger.info(f"known_targets: {known_targets.shape}")
             known_pred = outputs[known_targets] # [known_bsz, num_known_cls]
             #logger.info(f"known_pred: {known_pred.shape}")
@@ -106,10 +106,12 @@ def test(args, test_loader, model, val=False):
     known_all = known_all.data.cpu().numpy()
     label_all = label_all.data.cpu().numpy()
     if not val:
-        roc = compute_roc(unk_all, label_all,
+        """roc = compute_roc(unk_all, label_all,
                           num_known=int(outputs.size(1)))
         roc_soft = compute_roc(-known_all, label_all,
-                               num_known=int(outputs.size(1)))
+                               num_known=int(outputs.size(1)))"""
+        roc = 0
+        roc_soft = 0
         ind_known = np.where(label_all < int(outputs.size(1)))[0]
         id_score = unk_all[ind_known]
         logger.info("Closed acc: {:.3f}".format(top1.avg)) #Closed acc: 所有known classes数据的top1 acc

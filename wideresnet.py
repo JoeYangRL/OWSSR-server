@@ -163,10 +163,10 @@ class WideResNet_Open(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0.0)
     
-    def change_output_dim(self, num_cls_new):
+    def change_output_dim(self, args, num_cls_new):
 
-        new_fc = nn.Linear(self.channels_last, num_cls_new)
-        new_fc_open = nn.Linear(self.channels_last, 2 * num_cls_new, bias=False)
+        new_fc = nn.Linear(int(self.channels_last), num_cls_new).to(args.device)
+        new_fc_open = nn.Linear(int(self.channels_last), 2 * num_cls_new, bias=False).to(args.device)
         new_fc.weight.data[:self.num_classes] = self.fc.weight.data
         new_fc.bias.data[:self.num_classes] = self.fc.bias.data
         new_fc_open.weight.data[:2*self.num_classes] = self.fc_open.weight.data

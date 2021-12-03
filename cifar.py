@@ -39,9 +39,9 @@ def create_classIL_task(args):
     ##############################################################################
     # set class order
     logger.info(f" Setting class order")
-    task_list = [i for i in range(100)]
-    np.random.shuffle(task_list)
-    task_list = [68, 56, 78, 8, 23, 84, 90, 65, 74, 76,
+    #task_list = [i for i in range(101)]
+    #np.random.shuffle(task_list)
+    """ task_list = [68, 56, 78, 8, 23, 84, 90, 65, 74, 76,
                  40, 89, 3, 92, 55, 9, 26, 80, 43, 38,
                  58, 70, 77, 1, 85, 19, 17, 50, 28, 53,
                  13, 81, 45, 82, 6, 59, 83, 16, 15, 44,
@@ -50,7 +50,30 @@ def create_classIL_task(args):
                  42, 22, 35, 86, 24, 34, 87, 21, 99, 0,
                  88, 27, 18, 94, 11, 12, 47, 25, 30, 46,
                  62, 69, 36, 61, 7, 63, 75, 5, 32, 4,
-                 51, 48, 73, 93, 39, 67, 29, 49, 57, 33, 100]
+                 51, 48, 73, 93, 39, 67, 29, 49, 57, 33, 100]"""
+                 #51, 48, 73, 93, 39, 67, 29, 49, 57, 33]
+    task_list = [4, 30, 55, 72, 95,
+                 1, 32, 67, 73, 91,
+                 54, 62, 70, 82, 92, 
+                 9, 10, 16, 28, 61, 
+                 0, 51, 53, 57, 83, 
+                 22, 39, 40, 86, 87, 
+                 5, 20, 25, 84, 94, 
+                 6, 7, 14, 18, 24, 
+                 3, 42, 43, 88, 97, 
+                 12, 17, 37, 68, 76, 
+                 23, 33, 49, 60, 71, 
+                 15, 19, 21, 31, 38, 
+                 34, 63, 64, 66, 75, 
+                 26, 45, 77, 79, 99, 
+                 2, 11, 35, 46, 98, 
+                 27, 29, 44, 78, 93, 
+                 36, 50, 65, 74, 80, 
+                 47, 52, 56, 59, 96, 
+                 8, 13, 48, 58, 90, 
+                 41, 69, 81, 85, 89,
+                 100] #cls order in superclass order
+
     logger.info(f" task list: {task_list}")
 
     # write class order into file
@@ -176,11 +199,10 @@ def create_train_task_openmatch(args):
     #use OpenMatch Augment
     l_train_dataset = MyDataset_labeled(args, transforms=transform_open)
     u_train_dataset = MyDataset_unlabeled(args, transforms=transform_open)
-    if args.local_rank == 0:
+    if args.rank == 0:
         logger.info(f"l_train_dataset length: {l_train_dataset.__len__()}")
         logger.info(f"u_train_dataset length: {u_train_dataset.__len__()}")
     # !!!!!: when training, the subset copied from u_train_dataset must change its augment operation into TransformOpenMatch
-
 
     return l_train_dataset, u_train_dataset
 
@@ -192,14 +214,14 @@ def create_test_dataset(args):
     """
 
     transform = transforms.Compose([
-            transforms.Scale((32,32)),
+            transforms.Resize([32,32]),
             transforms.ToTensor(),
             transforms.Normalize(mean=cifar100_mean, std=cifar100_std)
         ]) #return: no_aug
 
     test_dataset, valid_dataset = \
     Mydataset_test(args, transforms=transform, test_not_val=True), Mydataset_test(args, transforms=transform, test_not_val=False)
-    if args.local_rank == 0:
+    if args.rank == 0:
         logger.info(f"test_dataset length: {test_dataset.__len__()}")
         logger.info(f"valid_dataset length: {valid_dataset.__len__()}")
 
